@@ -5,6 +5,23 @@ import sys
 from emulator.commands import CommandError
 
 
+def execute_line(shell, line, out, err):
+    """Выполнить одну строку и напечатать вывод или ошибку.
+
+    Ошибка выполнения команды печатается в err и не прерывает
+    работу эмулятора.
+    """
+    try:
+        output = shell.execute(line)
+    except CommandError as error:
+        out.flush()
+        print(error, file=err)
+        err.flush()
+        return
+    if output:
+        print(output, file=out)
+
+
 def run_repl(shell, read=input, out=None, err=None):
     """Запустить диалог с пользователем до команды exit или EOF.
 
@@ -23,11 +40,5 @@ def run_repl(shell, read=input, out=None, err=None):
         except KeyboardInterrupt:
             print("^C", file=out)
             continue
-        try:
-            output = shell.execute(line)
-        except CommandError as error:
-            print(error, file=err)
-            continue
-        if output:
-            print(output, file=out)
+        execute_line(shell, line, out, err)
     return shell.exit_code
