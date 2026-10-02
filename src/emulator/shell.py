@@ -34,7 +34,7 @@ class Shell:
         if handler is None:
             raise CommandError(f"{name}: command not found")
         try:
-            return handler(args)
+            return handler(self, args)
         except ExitRequest as request:
             self.running = False
             self.exit_code = request.code

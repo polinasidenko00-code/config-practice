@@ -1,7 +1,8 @@
 """Команды эмулятора.
 
-На первом этапе ls и cd являются заглушками: они только
-выводят свое имя и полученные аргументы.
+Каждая команда - функция (shell, args), возвращающая вывод
+в виде строки. На текущем этапе ls и cd являются заглушками:
+они только выводят свое имя и полученные аргументы.
 """
 
 MAX_CD_ARGS = 1
@@ -26,19 +27,19 @@ def format_stub(name, args):
     return f"{name}: args={args}"
 
 
-def cmd_ls(args):
+def cmd_ls(_shell, args):
     """Заглушка ls: принимает любое число аргументов."""
     return format_stub("ls", args)
 
 
-def cmd_cd(args):
+def cmd_cd(_shell, args):
     """Заглушка cd: принимает не более одного аргумента."""
     if len(args) > MAX_CD_ARGS:
         raise CommandError("cd: too many arguments")
     return format_stub("cd", args)
 
 
-def cmd_exit(args):
+def cmd_exit(_shell, args):
     """Завершить работу эмулятора.
 
     Необязательный аргумент - целочисленный код возврата.
