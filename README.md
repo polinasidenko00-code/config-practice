@@ -4,9 +4,13 @@
 
 Консольное (CLI) приложение на Python, эмулирующее работу командной
 строки UNIX-подобной ОС. Проект выполняется поэтапно; текущее
-состояние — **Этап 1. REPL**: минимальный прототип, в котором
-большинство команд являются заглушками, но диалог с пользователем
-уже поддерживается.
+состояние:
+
+- **Этап 1. REPL** — минимальный прототип: диалог с пользователем,
+  парсер, команды-заглушки `ls` и `cd`, команда `exit`.
+- **Этап 2. Конфигурация** — параметры командной строки (путь к VFS
+  и к стартовому скрипту), отладочный вывод параметров при запуске,
+  выполнение стартового скрипта.
 
 Внешних зависимостей нет, требуется Python 3.8+.
 
@@ -16,22 +20,72 @@
 src/
   main.py               точка входа
   emulator/
+    config.py           параметры командной строки
     parser.py           парсер строки ввода
     commands.py         команды эмулятора
     shell.py            состояние оболочки и выполнение команд
     repl.py             интерактивный цикл REPL
+    script.py           выполнение стартового скрипта
+scripts/
+  start_*.txt           стартовые скрипты эмулятора
+  test_*.bat, test_*.sh скрипты ОС для проверки параметров запуска
 tests/                  модульные тесты (unittest)
 run.bat, run.sh         скрипты запуска
 ```
 
-## Функции и настройки
+## Параметры командной строки
+
+```
+python src/main.py [-h] [--vfs PATH] [--script PATH]
+```
+
+| Параметр | Описание |
+|---|---|
+| `--vfs PATH` | Путь к физическому расположению VFS. Последний компонент пути становится именем VFS в приглашении (`--vfs data/my_vfs` → `my_vfs:~$`). Без параметра используется имя `vfs` |
+| `--script PATH` | Путь к стартовому скрипту, который выполняется перед интерактивным режимом |
+| `-h`, `--help` | Справка по параметрам |
+
+При запуске все параметры печатаются как отладочный вывод:
+
+```
+[debug] emulator parameters:
+[debug]   vfs    = data/my_vfs
+[debug]   script = scripts/start_basic.txt
+```
+
+Неизвестный параметр или параметр без значения — ошибка, код
+возврата 2.
+
+## Стартовый скрипт
+
+Текстовый файл в UTF-8, одна команда эмулятора на строку.
+
+- Команды выполняются последовательно. Перед выводом команды
+  печатается приглашение и сама команда — так имитируется диалог
+  с пользователем.
+- Строки с ошибками (неизвестная команда, неверные аргументы)
+  сообщают об ошибке и пропускаются, выполнение продолжается.
+- Пустые строки и строки, начинающиеся с `#`, игнорируются.
+- `exit [код]` останавливает скрипт и эмулятор с указанным кодом.
+- Если скрипт не вызвал `exit`, эмулятор переходит в интерактивный
+  режим.
+- Если файл скрипта не найден или не читается, выводится ошибка
+  и эмулятор завершается с кодом 1.
+
+## Функции
 
 | Элемент | Описание |
 |---|---|
-| Приглашение | `vfs:~$ ` — содержит имя VFS (`vfs` по умолчанию) |
+| Приглашение | `<имя VFS>:~$ ` |
 | `parse(line)` | Делит ввод на команду и аргументы по пробелам |
 | `Shell.execute(line)` | Выполняет строку, возвращает вывод команды |
+| `execute_line(...)` | Выполняет строку и печатает вывод или ошибку |
 | `run_repl(shell)` | Цикл «чтение — выполнение — вывод» до `exit`/EOF |
+| `parse_args(argv)` | Разбирает параметры командной строки |
+| `vfs_name_from_path(path)` | Получает имя VFS из пути |
+| `format_config(args)` | Формирует отладочный вывод параметров |
+| `read_script(path)` | Читает строки стартового скрипта |
+| `run_script(...)` | Выполняет команды стартового скрипта |
 
 ### Команды
 
@@ -49,8 +103,9 @@ run.bat, run.sh         скрипты запуска
 | Лишние аргументы `cd` | `cd: too many arguments` |
 | Лишние аргументы `exit` | `exit: too many arguments` |
 | Нечисловой код `exit` | `exit: abc: numeric argument required` |
+| Скрипт не найден | `emulator: cannot read script '...': No such file or directory` |
 
-Ошибки выводятся в stderr и не прерывают работу эмулятора.
+Ошибки команд выводятся в stderr и не прерывают работу эмулятора.
 Пустая строка игнорируется, `Ctrl+D` (`Ctrl+Z` в Windows) завершает
 работу, `Ctrl+C` прерывает ввод текущей строки.
 
@@ -61,37 +116,70 @@ run.bat, run.sh         скрипты запуска
 Windows:
 
 ```bat
-run.bat          :: запуск эмулятора
-run.bat test     :: запуск тестов
+run.bat                                  :: интерактивный режим
+run.bat --vfs data\my_vfs --script scripts\start_basic.txt
+run.bat test                             :: модульные тесты
 ```
 
 Linux / macOS:
 
 ```sh
-./run.sh         # запуск эмулятора
-./run.sh test    # запуск тестов
+./run.sh                                 # интерактивный режим
+./run.sh --vfs data/my_vfs --script scripts/start_basic.txt
+./run.sh test                            # модульные тесты
 ```
 
-Либо напрямую: `python src/main.py` и
+Либо напрямую: `python src/main.py ...` и
 `python -m unittest discover -s tests -v`.
 
-## Пример использования
+### Скрипты ОС для проверки параметров
+
+| Скрипт | Что проверяет |
+|---|---|
+| `scripts/test_vfs.bat`, `.sh` | Запуск без параметров, относительный и абсолютный путь к VFS, путь с завершающим разделителем, корень |
+| `scripts/test_script.bat`, `.sh` | Скрипт со всеми командами, скрипт с ошибками и кодом возврата, переход в интерактивный режим, отсутствующий скрипт |
+| `scripts/test_params.bat`, `.sh` | Оба параметра в любом порядке, `--help`, неизвестный параметр, параметр без значения |
+
+## Примеры использования
+
+Интерактивный режим:
 
 ```
-vfs:~$ ls
-ls: args=[]
-vfs:~$ ls -l /home user
-ls: args=['-l', '/home', 'user']
-vfs:~$ cd /tmp
-cd: args=['/tmp']
-vfs:~$ cd a b
+> python src/main.py --vfs data/my_vfs
+[debug] emulator parameters:
+[debug]   vfs    = data/my_vfs
+[debug]   script = None
+my_vfs:~$ ls -l /home
+ls: args=['-l', '/home']
+my_vfs:~$ cd a b
 cd: too many arguments
-vfs:~$
-vfs:~$ foo bar
+my_vfs:~$ foo
 foo: command not found
-vfs:~$ exit abc
-exit: abc: numeric argument required
-vfs:~$ exit 1 2
-exit: too many arguments
-vfs:~$ exit 0
+my_vfs:~$ exit
 ```
+
+Стартовый скрипт с ошибками (`scripts/start_errors.txt`):
+
+```
+> python src/main.py --vfs vfs/demo --script scripts/start_errors.txt
+[debug] emulator parameters:
+[debug]   vfs    = vfs/demo
+[debug]   script = scripts/start_errors.txt
+demo:~$ ls /home
+ls: args=['/home']
+demo:~$ unknown_command arg
+unknown_command: command not found
+demo:~$ cd /tmp /var
+cd: too many arguments
+demo:~$ pwd
+pwd: command not found
+demo:~$ ls after errors
+ls: args=['after', 'errors']
+demo:~$ exit abc
+exit: abc: numeric argument required
+demo:~$ exit 1 2
+exit: too many arguments
+demo:~$ exit 3
+```
+
+Код возврата — 3; строка после `exit 3` не выполняется.
