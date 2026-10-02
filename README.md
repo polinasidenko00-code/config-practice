@@ -17,6 +17,8 @@
 - **Этап 4. Основные команды** — настоящие `ls` и `cd` с текущей
   директорией и путями (`.`, `..`, `~`), новые команды `history`,
   `rev` и `cat`.
+- **Этап 5. Дополнительные команды** — `chown` и `rm`, изменяющие
+  VFS только в памяти.
 
 Внешних зависимостей нет, требуется Python 3.8+.
 
@@ -30,7 +32,8 @@ src/
     parser.py           парсер строки ввода
     errors.py           исключения команд
     commands.py         реестр команд, history, exit, vfs-save
-    filecmds.py         команды ls, cd, cat, rev
+    filecmds.py         команды ls, cd, cat, rev, разбор опций
+    modcmds.py          команды chown, rm (изменяют VFS в памяти)
     shell.py            состояние оболочки и выполнение команд
     repl.py             интерактивный цикл REPL
     script.py           выполнение стартового скрипта
@@ -75,6 +78,12 @@ python src/main.py [-h] [--vfs PATH] [--script PATH]
 читаются в память. Дальнейшие операции выполняются только с памятью;
 исходная директория никогда не изменяется. Изменить данные на диске
 может только служебная команда `vfs-save`.
+
+У каждого файла и директории в памяти есть владелец и группа. В
+директории-источнике (исходном формате VFS) их хранить негде, поэтому
+при загрузке всем узлам назначается `root:root`; `chown` меняет их
+только в памяти, а `vfs-save` сохраняет структуру и содержимое файлов,
+но не владельцев.
 
 Ошибки загрузки VFS выводятся в stderr, эмулятор завершается с кодом 1:
 
@@ -126,6 +135,7 @@ python src/main.py [-h] [--vfs PATH] [--script PATH]
 | Скрипт | Назначение |
 |---|---|
 | `scripts/start_basic.txt` | Команды `ls` и `cd` без ошибок (для `vfs/deep`) |
+| `scripts/start_modify.txt` | Команды этапа 5 (`chown`, `rm`) во всех режимах и с ошибками, в конце сохраняет VFS в `out/modified` (для `vfs/deep`, запускать из корня проекта) |
 | `scripts/start_errors.txt` | Ошибочные строки и `exit` с кодом 3 |
 | `scripts/start_interactive.txt` | Скрипт без `exit`, затем интерактивный режим |
 | `scripts/start_vfs.txt` | Все команды этапов 1–3, работа с VFS и ошибки; копию VFS сохраняет в `out/vfs_copy` (запускать из корня проекта) |
@@ -140,18 +150,21 @@ python src/main.py [-h] [--vfs PATH] [--script PATH]
 
 | Команда | Поведение |
 |---|---|
-| `ls [-a] [-l] [PATH...]` | Без путей — содержимое текущей директории. Для директории выводит содержимое по алфавиту, для файла — его путь. `-a` показывает скрытые файлы (имя начинается с `.`), `-l` — длинный формат: тип (`d`/`-`), размер в байтах, имя. Опции объединяются (`-al`). Для нескольких путей содержимое выводится блоками с заголовком `PATH:` |
+| `ls [-a] [-l] [PATH...]` | Без путей — содержимое текущей директории. Для директории выводит содержимое по алфавиту, для файла — его путь. `-a` показывает скрытые файлы (имя начинается с `.`), `-l` — длинный формат: тип (`d`/`-`), владелец, группа, размер в байтах, имя. Опции объединяются (`-al`). Для нескольких путей содержимое выводится блоками с заголовком `PATH:` |
 | `cd [PATH]` | Переходит в директорию; без аргумента — в корень (`~`) |
 | `cat FILE...` | Выводит содержимое файлов, объединяя их по порядку |
 | `rev FILE...` | Выводит строки файлов с символами в обратном порядке |
 | `history [N]` | Выводит пронумерованную историю всех введенных команд (включая ошибочные и сам `history`); с `N` — только `N` последних |
+| `chown [-R] [-v] OWNER[:GROUP] PATH...` | Меняет владельца и/или группу. Формы: `OWNER`, `OWNER:GROUP`, `OWNER:` (только владелец), `:GROUP` (только группа). Имя начинается с буквы или `_` и состоит из букв, цифр, `_`, `.`, `-`. `-R` — для всего содержимого директорий, `-v` — сообщение о каждом узле |
+| `rm [-r\|-R] [-f] [-v] PATH...` | Удаляет файлы; директории — только с `-r`/`-R` вместе с содержимым. `-f` — не сообщать об отсутствующих путях и отсутствии операндов, `-v` — сообщение о каждом удаленном узле (сначала вложенные). Отказывается удалять `.`, `..` и корень |
 | `vfs-save PATH` | Сохраняет VFS на диск (см. выше) |
 | `exit [код]` | Завершает работу с кодом возврата (по умолчанию 0) |
 
 Содержимое файлов для `cat` и `rev` читается как UTF-8 (некорректные
 байты заменяются символом `�`), окончания строк Windows приводятся
 к `
-`. Чтение стандартного ввода не поддерживается, поэтому `cat`
+`. Опции можно объединять (`-rf`, `-Rv`) и указывать после путей;
+`--` завершает опции. Чтение стандартного ввода не поддерживается, поэтому `cat`
 и `rev` требуют хотя бы один файл.
 
 ### Обработка ошибок команд
@@ -166,7 +179,12 @@ python src/main.py [-h] [--vfs PATH] [--script PATH]
 | Путь не найден | `ls: cannot access 'x': No such file or directory`, `cd: x: No such file or directory`, `cat: x: No such file or directory` |
 | Файл вместо директории | `cd: a.txt: Not a directory` |
 | Директория вместо файла | `cat: docs: Is a directory`, `rev: docs: Is a directory` |
-| Неизвестная опция `ls` | `ls: invalid option -- 'z'` |
+| Неизвестная опция | `ls: invalid option -- 'z'`, `rm: invalid option -- 'z'` |
+| Нет операндов `chown`, `rm` | `chown: missing operand`, `chown: missing operand after 'alice'`, `rm: missing operand` |
+| Неверное имя в `chown` | `chown: invalid user: '1bad'`, `chown: invalid group: 'alice:-x'`, `chown: invalid spec: ':'` |
+| Путь не найден в `chown`, `rm` | `chown: cannot access 'x': No such file or directory`, `rm: cannot remove 'x': No such file or directory` |
+| Директория без `-r` | `rm: cannot remove 'x': Is a directory` |
+| Удаление `.`, `..`, корня | `rm: refusing to remove '.' or '..' directory: skipping '.'`, `rm: it is dangerous to operate recursively on '/'` |
 | `cat`/`rev` без файлов | `cat: missing file operand` |
 | Лишние аргументы `cd`, `history`, `exit` | `cd: too many arguments` |
 | Нечисловой аргумент `history`, `exit` | `history: abc: numeric argument required` |
@@ -199,6 +217,10 @@ python src/main.py [-h] [--vfs PATH] [--script PATH]
 | `Vfs`, `VfsDir`, `VfsFile` | Узлы VFS в памяти; `Vfs.count()` — число директорий и файлов, `Vfs.get(parts)` — поиск узла |
 | `split_path(path, cwd)`, `format_path(parts)` | Разбор пути VFS в список компонентов и обратно |
 | `cmd_ls`, `cmd_cd`, `cmd_cat`, `cmd_rev`, `cmd_history` | Команды этапа 4 |
+| `cmd_chown`, `cmd_rm` | Команды этапа 5 |
+| `parse_options(name, args, allowed)` | Разбор однобуквенных опций команды |
+| `parse_owner(spec)` | Разбор `OWNER[:GROUP]` для `chown` |
+| `Vfs.remove(parts)`, `walk(path, node)` | Удаление узла из VFS и обход поддерева |
 | `CommandError(message, output)` | Ошибка команды с частичным выводом |
 
 ## Сборка и запуск тестов
@@ -238,6 +260,7 @@ Linux / macOS:
 | `scripts/test_vfs_deep` | VFS с 3+ уровнями файлов и папок, путь с завершающим разделителем |
 | `scripts/test_vfs_errors` | Несуществующий путь, файл вместо директории, символическая ссылка внутри VFS |
 | `scripts/test_commands` | Все режимы `ls`, `cd`, `history`, `rev`, `cat` и их ошибки на `vfs/deep` |
+| `scripts/test_modify` | Все режимы `chown` и `rm` и их ошибки на `vfs/deep`; показывает, что исходная VFS на диске не изменилась, а сохраненная копия отражает удаления |
 | `scripts/test_script` | Скрипт со всеми командами, скрипт с ошибками и кодом возврата, переход в интерактивный режим, отсутствующий скрипт |
 | `scripts/test_params` | Оба параметра в любом порядке, `--help`, неизвестный параметр, параметр без значения |
 
@@ -279,6 +302,30 @@ deep:/home$ history 3
     9  cd /readme.txt
    10  history 3
 deep:/home$ exit
+```
+
+Команды этапа 5 (фрагмент `scripts/start_modify.txt`):
+
+```
+deep:/$ chown alice:staff /home/user/docs
+deep:/$ chown -v carol /readme.txt
+changed ownership of '/readme.txt' from root:root to carol:root
+deep:/$ ls -al /home/user
+- root   root       26 .profile
+d alice  staff       - docs
+d root   root        - music
+deep:/$ chown 1bad /readme.txt
+chown: invalid user: '1bad'
+deep:/$ rm -rv /tmp/cache
+removed '/tmp/cache/a/b/item.txt'
+removed directory '/tmp/cache/a/b'
+removed directory '/tmp/cache/a'
+removed directory '/tmp/cache'
+deep:/$ rm /var
+rm: cannot remove '/var': Is a directory
+deep:/$ rm -f /nope
+deep:/$ rm -r /
+rm: it is dangerous to operate recursively on '/'
 ```
 
 Сохранение VFS:
