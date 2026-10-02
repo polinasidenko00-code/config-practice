@@ -12,7 +12,7 @@ sys.path.insert(0, SRC_DIR)
 
 from emulator.script import ScriptError, read_script, run_script  # noqa
 from emulator.shell import Shell  # noqa: E402
-from emulator.vfs import Vfs  # noqa: E402
+from emulator.vfs import Vfs, VfsDir, VfsFile  # noqa: E402
 from main import main  # noqa: E402
 
 
@@ -31,7 +31,11 @@ class RunScriptTest(unittest.TestCase):
 
     def run_lines(self, lines):
         """Выполнить строки, вернуть (оболочка, вывод, ошибки)."""
-        shell = Shell(Vfs("test"))
+        home = VfsDir("home")
+        home.add(VfsFile("a.txt"))
+        vfs = Vfs("test")
+        vfs.root.add(home)
+        shell = Shell(vfs)
         out, err = io.StringIO(), io.StringIO()
         run_script(shell, lines, out, err)
         return shell, out.getvalue(), err.getvalue()
@@ -39,14 +43,14 @@ class RunScriptTest(unittest.TestCase):
     def test_input_and_output_echoed(self):
         """Печатаются приглашение, команда и ее вывод."""
         _shell, out, _err = self.run_lines(["ls /home"])
-        self.assertEqual(out, "test:/$ ls /home\nls: args=['/home']\n")
+        self.assertEqual(out, "test:/$ ls /home\na.txt\n")
 
     def test_errors_skipped(self):
         """Ошибочные строки пропускаются, выполнение продолжается."""
-        shell, out, err = self.run_lines(["bad", "cd a b", "ls ok"])
+        shell, out, err = self.run_lines(["bad", "cd a b", "ls /home"])
         self.assertIn("bad: command not found", err)
         self.assertIn("cd: too many arguments", err)
-        self.assertIn("ls: args=['ok']", out)
+        self.assertIn("a.txt", out)
         self.assertTrue(shell.running)
 
     def test_comments_and_empty_lines(self):

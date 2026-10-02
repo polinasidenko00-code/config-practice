@@ -12,7 +12,7 @@ sys.path.insert(
 from emulator.commands import CommandError  # noqa: E402
 from emulator.repl import run_repl  # noqa: E402
 from emulator.shell import Shell  # noqa: E402
-from emulator.vfs import Vfs  # noqa: E402
+from emulator.vfs import Vfs, VfsDir  # noqa: E402
 
 
 def fake_input(lines):
@@ -34,20 +34,28 @@ class ShellTest(unittest.TestCase):
 
     def setUp(self):
         """Создать новую оболочку для каждого теста."""
-        self.shell = Shell(Vfs("myvfs"))
+        vfs = Vfs("myvfs")
+        vfs.root.add(VfsDir("tmp"))
+        self.shell = Shell(vfs)
 
     def test_prompt_contains_vfs_name(self):
         """Приглашение содержит имя VFS."""
         self.assertIn("myvfs", self.shell.prompt)
 
-    def test_ls_stub(self):
-        """ls выводит свое имя и аргументы."""
-        output = self.shell.execute("ls -l /home")
-        self.assertEqual(output, "ls: args=['-l', '/home']")
+    def test_prompt_contains_cwd(self):
+        """Приглашение содержит текущую директорию."""
+        self.assertEqual(self.shell.prompt, "myvfs:/$ ")
+        self.shell.execute("cd tmp")
+        self.assertEqual(self.shell.prompt, "myvfs:/tmp$ ")
 
-    def test_cd_stub(self):
-        """cd выводит свое имя и аргумент."""
-        self.assertEqual(self.shell.execute("cd /tmp"), "cd: args=['/tmp']")
+    def test_history_recorded(self):
+        """Непустые строки, включая ошибочные, попадают в историю."""
+        for line in ("  ls  ", "", "foo"):
+            try:
+                self.shell.execute(line)
+            except CommandError:
+                pass
+        self.assertEqual(self.shell.history, ["ls", "foo"])
 
     def test_cd_too_many_args(self):
         """cd с двумя аргументами - ошибка."""
@@ -97,8 +105,8 @@ class ReplTest(unittest.TestCase):
             ["ls", "bad", "cd x y", "exit 2", "ls never"]
         )
         self.assertEqual(code, 2)
-        self.assertIn("ls: args=[]", out)
-        self.assertNotIn("never", out)
+        self.assertEqual(out, "")
+        self.assertNotIn("never", err)
         self.assertIn("bad: command not found", err)
         self.assertIn("cd: too many arguments", err)
 

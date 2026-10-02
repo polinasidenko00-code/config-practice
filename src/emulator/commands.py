@@ -1,36 +1,18 @@
-"""Команды эмулятора.
+"""Реестр команд эмулятора и служебные команды.
 
 Каждая команда - функция (shell, args), возвращающая вывод
-в виде строки. На текущем этапе ls и cd являются заглушками:
-они только выводят свое имя и полученные аргументы.
-Служебная команда vfs-save сохраняет VFS на диск.
+в виде строки. Команды работы с файлами находятся в модуле
+filecmds; служебная команда vfs-save сохраняет VFS на диск.
 """
 
 from emulator.errors import CommandError, ExitRequest
+from emulator.filecmds import cmd_cd, cmd_ls
 from emulator.vfs import VfsError, save_vfs
 
 __all__ = ["COMMANDS", "CommandError", "ExitRequest"]
 
-MAX_CD_ARGS = 1
 MAX_EXIT_ARGS = 1
 VFS_SAVE_ARGS = 1
-
-
-def format_stub(name, args):
-    """Сформировать вывод команды-заглушки: имя и аргументы."""
-    return f"{name}: args={args}"
-
-
-def cmd_ls(_shell, args):
-    """Заглушка ls: принимает любое число аргументов."""
-    return format_stub("ls", args)
-
-
-def cmd_cd(_shell, args):
-    """Заглушка cd: принимает не более одного аргумента."""
-    if len(args) > MAX_CD_ARGS:
-        raise CommandError("cd: too many arguments")
-    return format_stub("cd", args)
 
 
 def cmd_exit(_shell, args):
