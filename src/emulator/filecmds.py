@@ -22,18 +22,27 @@ def finish(name, output, errors):
     return output
 
 
-def parse_ls_options(args):
-    """Отделить опции ls (-a, -l, -al) от путей."""
-    options, paths = set(), []
+def parse_options(name, args, allowed):
+    """Отделить однобуквенные опции команды name от операндов.
+
+    allowed - строка допустимых опций; опции можно объединять
+    (-al) и указывать после операндов. Аргумент "--" завершает
+    опции, "-" считается операндом. Неизвестная опция - ошибка.
+    """
+    options, operands = set(), []
+    args = iter(args)
     for arg in args:
+        if arg == "--":
+            operands.extend(args)
+            break
         if not arg.startswith("-") or arg == "-":
-            paths.append(arg)
+            operands.append(arg)
             continue
         for flag in arg[1:]:
-            if flag not in LS_OPTIONS:
-                raise CommandError(f"ls: invalid option -- '{flag}'")
+            if flag not in allowed:
+                raise CommandError(f"{name}: invalid option -- '{flag}'")
             options.add(flag)
-    return options, paths
+    return options, operands
 
 
 def format_entry(name, node, long_format):
@@ -89,7 +98,7 @@ def cmd_ls(shell, args):
     формат. Для нескольких путей содержимое каждой директории
     выводится под заголовком "путь:".
     """
-    options, paths = parse_ls_options(args)
+    options, paths = parse_options("ls", args, LS_OPTIONS)
     paths = paths or ["."]
     errors = []
     files, dirs = find_nodes(shell, paths, errors)
