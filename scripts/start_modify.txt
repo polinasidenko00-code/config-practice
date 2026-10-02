@@ -1,0 +1,65 @@
+# Стартовый скрипт этапа 5: chown и rm.
+# Все режимы команд, работа с VFS и обработка ошибок.
+# Изменения выполняются только в памяти.
+# Запуск из корня проекта с VFS vfs/deep:
+#   python src/main.py --vfs vfs/deep --script scripts/start_modify.txt
+
+# chown: владелец, владелец и группа, только группа, только владелец
+ls -al /home/user
+chown alice /home/user/.profile
+chown alice:staff /home/user/docs
+chown :staff /etc/hosts
+chown bob: /etc/hosts
+ls -al /home/user /etc
+# chown -v: сообщение о смене и о сохранении владельца
+chown -v carol /readme.txt
+chown -v carol /readme.txt
+# chown -R: все поддерево, относительный путь
+cd /home/user
+chown -R -v dave:dev docs
+ls -l docs docs/drafts
+cd
+# chown: ошибки - нет операндов, неверные имена, опция, нет пути
+chown
+chown alice
+chown 1bad /readme.txt
+chown alice:-x /readme.txt
+chown : /readme.txt
+chown -x alice /readme.txt
+chown eve /nope /var/log/system.log
+ls -l /var/log
+
+# rm: файл, -v, несколько путей, относительный путь
+ls /etc
+rm /etc/hosts
+ls /etc
+rm -v /home/user/docs/drafts/draft1.txt
+cd /home/user/docs
+rm drafts/draft2.txt report.txt
+ls -a
+# rm -r и -R: директории вместе с содержимым
+rm -rv /tmp/cache
+ls /tmp
+rm -R ../music
+ls -a /home/user
+cd
+# rm -f: отсутствующие пути и отсутствие операндов не ошибка
+rm -f /nope
+rm -f
+# rm: ошибки - нет операнда, нет пути, директория без -r,
+# путь через файл, ., .., корень, неверная опция
+rm
+rm /nope
+rm /var
+rm /readme.txt/x
+rm .
+rm -r /home/..
+rm /
+rm -r /
+rm -z /readme.txt
+rm /nope /readme.txt
+ls -l /
+
+# Сохранение измененной VFS; исходная VFS на диске не изменилась
+vfs-save out/modified
+exit
