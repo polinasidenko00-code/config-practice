@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(
     0, os.path.join(os.path.dirname(__file__), os.pardir, "src")
@@ -95,6 +96,16 @@ class LoadVfsTest(VfsTestCase):
         path = os.path.join(self.source, "readme.txt")
         with self.assertRaisesRegex(VfsError, "invalid format"):
             load_vfs(path)
+
+    def test_unsupported_entry(self):
+        """Ссылка или устройство внутри VFS - неверный формат."""
+        entry = mock.Mock(path="vfs/link")
+        entry.is_dir.return_value = False
+        entry.is_file.return_value = False
+        with mock.patch("os.scandir") as scandir:
+            scandir.return_value.__enter__.return_value = [entry]
+            with self.assertRaisesRegex(VfsError, "unsupported"):
+                load_vfs(self.source)
 
     def test_empty_vfs_without_path(self):
         """Без параметра --vfs создается пустая VFS."""
