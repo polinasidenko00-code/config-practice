@@ -84,10 +84,11 @@ class LsTest(unittest.TestCase):
         self.assertEqual(self.shell.execute("ls -a"), ".hidden  a.txt  home")
 
     def test_long(self):
-        """-l выводит тип, размер и имя."""
+        """-l выводит тип, владельца, группу, размер и имя."""
         self.assertEqual(
             self.shell.execute("ls -l"),
-            "-        8 a.txt\nd        - home",
+            "- root   root        8 a.txt\n"
+            "d root   root        - home",
         )
 
     def test_combined_options(self):

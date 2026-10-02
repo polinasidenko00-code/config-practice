@@ -40,13 +40,15 @@ def format_entry(name, node, long_format):
     """Сформировать строку ls для одного файла или директории.
 
     В длинном формате выводятся тип (d - директория, - - файл),
-    размер файла в байтах и имя.
+    владелец, группа, размер файла в байтах и имя.
     """
     if not long_format:
         return name
     if isinstance(node, VfsDir):
-        return f"d {DIR_SIZE:>8} {name}"
-    return f"- {len(node.data):>8} {name}"
+        kind, size = "d", DIR_SIZE
+    else:
+        kind, size = "-", len(node.data)
+    return f"{kind} {node.owner:<6} {node.group:<6} {size:>6} {name}"
 
 
 def format_listing(entries, options):

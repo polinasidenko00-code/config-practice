@@ -13,6 +13,8 @@ SEPARATOR = "/"
 HOME = "~"
 NO_SUCH_FILE = "No such file or directory"
 NOT_A_DIRECTORY = "Not a directory"
+DEFAULT_OWNER = "root"
+DEFAULT_GROUP = "root"
 
 
 class VfsError(Exception):
@@ -23,21 +25,36 @@ class VfsPathError(VfsError):
     """Путь не найден в VFS; текст - причина в стиле UNIX."""
 
 
-class VfsFile:
+class VfsNode:
+    """Узел VFS: имя, владелец и группа.
+
+    Владелец и группа хранятся только в памяти: директория на
+    диске (исходный формат VFS) их не содержит, поэтому при
+    загрузке всем узлам назначаются значения по умолчанию.
+    """
+
+    def __init__(self, name):
+        """Создать узел с владельцем и группой по умолчанию."""
+        self.name = name
+        self.owner = DEFAULT_OWNER
+        self.group = DEFAULT_GROUP
+
+
+class VfsFile(VfsNode):
     """Файл VFS: имя и содержимое в виде байтов."""
 
     def __init__(self, name, data=b""):
         """Создать файл с указанным именем и содержимым."""
-        self.name = name
+        super().__init__(name)
         self.data = data
 
 
-class VfsDir:
+class VfsDir(VfsNode):
     """Директория VFS: имя и словарь дочерних узлов по именам."""
 
     def __init__(self, name):
         """Создать пустую директорию с указанным именем."""
-        self.name = name
+        super().__init__(name)
         self.children = {}
 
     def add(self, node):
