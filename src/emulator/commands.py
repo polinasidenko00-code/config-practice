@@ -6,24 +6,14 @@
 Служебная команда vfs-save сохраняет VFS на диск.
 """
 
+from emulator.errors import CommandError, ExitRequest
 from emulator.vfs import VfsError, save_vfs
+
+__all__ = ["COMMANDS", "CommandError", "ExitRequest"]
 
 MAX_CD_ARGS = 1
 MAX_EXIT_ARGS = 1
 VFS_SAVE_ARGS = 1
-
-
-class CommandError(Exception):
-    """Ошибка выполнения команды (неверные аргументы и т.п.)."""
-
-
-class ExitRequest(Exception):
-    """Запрос на завершение работы эмулятора с кодом возврата."""
-
-    def __init__(self, code):
-        """Сохранить код возврата для завершения эмулятора."""
-        super().__init__(code)
-        self.code = code
 
 
 def format_stub(name, args):

@@ -8,12 +8,14 @@ from emulator.commands import CommandError
 def execute_line(shell, line, out, err):
     """Выполнить одну строку и напечатать вывод или ошибку.
 
-    Ошибка выполнения команды печатается в err и не прерывает
-    работу эмулятора.
+    Ошибка выполнения команды печатается в err (после частичного
+    вывода команды, если он есть) и не прерывает работу эмулятора.
     """
     try:
         output = shell.execute(line)
     except CommandError as error:
+        if error.output:
+            print(error.output, file=out)
         out.flush()
         print(error, file=err)
         err.flush()
