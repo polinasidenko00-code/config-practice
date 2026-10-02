@@ -2,23 +2,22 @@
 
 from emulator.commands import COMMANDS, CommandError, ExitRequest
 from emulator.parser import parse
-
-DEFAULT_VFS_NAME = "vfs"
+from emulator.vfs import Vfs
 
 
 class Shell:
     """Состояние эмулятора оболочки."""
 
-    def __init__(self, vfs_name=DEFAULT_VFS_NAME):
-        """Создать оболочку, работающую с VFS с указанным именем."""
-        self.vfs_name = vfs_name
+    def __init__(self, vfs=None):
+        """Создать оболочку для VFS; без VFS создается пустая."""
+        self.vfs = vfs if vfs is not None else Vfs()
         self.running = True
         self.exit_code = 0
 
     @property
     def prompt(self):
         """Приглашение к вводу, содержащее имя VFS."""
-        return f"{self.vfs_name}:~$ "
+        return f"{self.vfs.name}:~$ "
 
     def execute(self, line):
         """Выполнить строку ввода и вернуть вывод команды.

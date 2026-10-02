@@ -12,6 +12,7 @@ sys.path.insert(0, SRC_DIR)
 
 from emulator.script import ScriptError, read_script, run_script  # noqa
 from emulator.shell import Shell  # noqa: E402
+from emulator.vfs import Vfs  # noqa: E402
 from main import main  # noqa: E402
 
 
@@ -30,7 +31,7 @@ class RunScriptTest(unittest.TestCase):
 
     def run_lines(self, lines):
         """Выполнить строки, вернуть (оболочка, вывод, ошибки)."""
-        shell = Shell("test")
+        shell = Shell(Vfs("test"))
         out, err = io.StringIO(), io.StringIO()
         run_script(shell, lines, out, err)
         return shell, out.getvalue(), err.getvalue()
@@ -91,11 +92,15 @@ class MainTest(unittest.TestCase):
         """Параметры выводятся, имя VFS попадает в приглашение."""
         path = write_temp_script("ls\nexit 4\n")
         self.addCleanup(os.remove, path)
-        code, out, _err = self.run_main(
-            ["--vfs", "disk/myfs", "--script", path]
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            vfs_path = os.path.join(tmp, "myfs")
+            os.makedirs(os.path.join(vfs_path, "home"))
+            code, out, _err = self.run_main(
+                ["--vfs", vfs_path, "--script", path]
+            )
         self.assertEqual(code, 4)
-        self.assertIn("vfs    = disk/myfs", out)
+        self.assertIn(f"vfs    = {vfs_path}", out)
+        self.assertIn("VFS 'myfs' loaded into memory: 1 directories", out)
         self.assertIn("myfs:~$ ls", out)
 
     def test_missing_script(self):
@@ -103,6 +108,12 @@ class MainTest(unittest.TestCase):
         code, _out, err = self.run_main(["--script", "no_such.txt"])
         self.assertEqual(code, 1)
         self.assertIn("cannot read script", err)
+
+    def test_missing_vfs(self):
+        """Отсутствующая VFS - код возврата 1."""
+        code, _out, err = self.run_main(["--vfs", "no_such_vfs"])
+        self.assertEqual(code, 1)
+        self.assertIn("cannot load VFS", err)
 
 
 if __name__ == "__main__":

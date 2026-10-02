@@ -3,7 +3,7 @@
 import argparse
 import os
 
-from emulator.shell import DEFAULT_VFS_NAME
+from emulator.vfs import DEFAULT_VFS_NAME, Vfs, load_vfs
 
 
 def build_parser():
@@ -44,6 +44,19 @@ def vfs_name_from_path(path):
     return name or DEFAULT_VFS_NAME
 
 
+def create_vfs(args):
+    """Создать VFS по параметрам командной строки.
+
+    Если путь к VFS задан, VFS загружается с диска в память
+    (при ошибке выбрасывается VfsError), иначе создается
+    пустая VFS с именем по умолчанию.
+    """
+    name = vfs_name_from_path(args.vfs)
+    if not args.vfs:
+        return Vfs(name)
+    return load_vfs(args.vfs, name)
+
+
 def format_config(args):
     """Сформировать отладочный вывод всех заданных параметров."""
     return "\n".join([
@@ -51,3 +64,12 @@ def format_config(args):
         f"[debug]   vfs    = {args.vfs}",
         f"[debug]   script = {args.script}",
     ])
+
+
+def format_vfs_info(vfs):
+    """Сформировать отладочный вывод о загруженной VFS."""
+    dirs, files = vfs.count()
+    return (
+        f"[debug] VFS '{vfs.name}' loaded into memory: "
+        f"{dirs} directories, {files} files"
+    )

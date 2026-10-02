@@ -12,6 +12,7 @@ sys.path.insert(
 from emulator.commands import CommandError  # noqa: E402
 from emulator.repl import run_repl  # noqa: E402
 from emulator.shell import Shell  # noqa: E402
+from emulator.vfs import Vfs  # noqa: E402
 
 
 def fake_input(lines):
@@ -33,7 +34,7 @@ class ShellTest(unittest.TestCase):
 
     def setUp(self):
         """Создать новую оболочку для каждого теста."""
-        self.shell = Shell("myvfs")
+        self.shell = Shell(Vfs("myvfs"))
 
     def test_prompt_contains_vfs_name(self):
         """Приглашение содержит имя VFS."""
