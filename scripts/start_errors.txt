@@ -5,7 +5,7 @@ unknown_command arg
 cd /tmp /var
 pwd
 
-ls after errors
+ls /
 exit abc
 exit 1 2
 # exit с кодом возврата 3 останавливает скрипт

@@ -1,0 +1,62 @@
+# Стартовый скрипт этапа 4: ls, cd, history, rev, cat.
+# Все режимы команд, работа с VFS и обработка ошибок.
+# Запуск с VFS vfs/deep:
+#   python src/main.py --vfs vfs/deep --script scripts/start_commands.txt
+
+# ls: текущая директория, скрытые файлы, длинный формат
+ls
+ls -a /home/user
+ls -l /home/user
+ls -al /home/user
+# ls: файл, несколько путей с заголовками
+ls /readme.txt
+ls /etc /var/log
+# ls: ошибки - нет пути (остальные пути выводятся), неверная опция
+ls /nope /etc
+ls -z
+
+# cd: абсолютный и относительный путь, .., ., ~
+cd /home/user
+ls
+cd docs/drafts
+ls
+cd ../..
+cd ./music
+ls
+cd ~
+cd home/user/docs
+# cd: ошибки - нет пути, файл вместо директории, лишний аргумент
+cd /nope
+cd /readme.txt
+cd /readme.txt/x
+cd a b
+# cd без аргумента - в корень
+cd
+
+# cat: один файл, несколько файлов, относительный путь
+cat /readme.txt
+cat /etc/hosts /etc/app/settings.conf
+cd /home/user/docs
+cat report.txt drafts/draft1.txt
+# cat: ошибки - нет файлов, директория, нет файла
+cat
+cat drafts
+cat nope.txt report.txt
+cd
+
+# rev: один и несколько файлов
+rev /var/log/system.log
+rev /home/user/docs/drafts/draft1.txt /home/user/docs/drafts/draft2.txt
+# rev: ошибки
+rev
+rev /home
+rev /nope.txt
+
+# history: последние записи, вся история, ошибки
+history 5
+history
+history abc
+history -3
+history 1 2
+
+exit
