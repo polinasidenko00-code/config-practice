@@ -85,6 +85,16 @@ class Vfs:
                 raise VfsPathError(NO_SUCH_FILE)
         return node
 
+    def remove(self, parts):
+        """Удалить узел (вместе с потомками) из VFS в памяти.
+
+        parts - непустой список компонентов пути; выбрасывает
+        VfsPathError, если узел не найден.
+        """
+        self.get(parts)
+        parent = self.get(parts[:-1])
+        del parent.children[parts[-1]]
+
     def count(self):
         """Вернуть (число директорий, число файлов) без корня."""
         dirs, files = 0, 0
@@ -127,6 +137,18 @@ def split_path(path, cwd):
 def format_path(parts):
     """Получить строку абсолютного пути из списка компонентов."""
     return SEPARATOR + SEPARATOR.join(parts)
+
+
+def walk(path, node):
+    """Обойти узел и всех его потомков в порядке имен.
+
+    Выдает пары (путь, узел); путь потомка строится из path
+    добавлением имен через разделитель.
+    """
+    yield path, node
+    if isinstance(node, VfsDir):
+        for name, child in sorted(node.children.items()):
+            yield from walk(path.rstrip(SEPARATOR) + SEPARATOR + name, child)
 
 
 def load_vfs(path, name=DEFAULT_VFS_NAME):

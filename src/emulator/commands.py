@@ -2,11 +2,13 @@
 
 Каждая команда - функция (shell, args), возвращающая вывод
 в виде строки. Команды работы с файлами находятся в модуле
-filecmds; служебная команда vfs-save сохраняет VFS на диск.
+filecmds, изменяющие VFS (chown, rm) - в модуле modcmds;
+служебная команда vfs-save сохраняет VFS на диск.
 """
 
 from emulator.errors import CommandError, ExitRequest
 from emulator.filecmds import cmd_cat, cmd_cd, cmd_ls, cmd_rev
+from emulator.modcmds import cmd_chown, cmd_rm
 from emulator.vfs import VfsError, save_vfs
 
 __all__ = ["COMMANDS", "CommandError", "ExitRequest"]
@@ -82,6 +84,8 @@ COMMANDS = {
     "cd": cmd_cd,
     "cat": cmd_cat,
     "rev": cmd_rev,
+    "chown": cmd_chown,
+    "rm": cmd_rm,
     "history": cmd_history,
     "exit": cmd_exit,
     "vfs-save": cmd_vfs_save,
