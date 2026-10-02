@@ -9,10 +9,18 @@
 import os
 
 DEFAULT_VFS_NAME = "vfs"
+SEPARATOR = "/"
+HOME = "~"
+NO_SUCH_FILE = "No such file or directory"
+NOT_A_DIRECTORY = "Not a directory"
 
 
 class VfsError(Exception):
     """Ошибка загрузки или сохранения VFS."""
+
+
+class VfsPathError(VfsError):
+    """Путь не найден в VFS; текст - причина в стиле UNIX."""
 
 
 class VfsFile:
@@ -45,6 +53,21 @@ class Vfs:
         self.name = name
         self.root = root if root is not None else VfsDir("")
 
+    def get(self, parts):
+        """Найти узел по списку компонентов абсолютного пути.
+
+        Выбрасывает VfsPathError, если компонент не найден или
+        промежуточный компонент не является директорией.
+        """
+        node = self.root
+        for part in parts:
+            if not isinstance(node, VfsDir):
+                raise VfsPathError(NOT_A_DIRECTORY)
+            node = node.children.get(part)
+            if node is None:
+                raise VfsPathError(NO_SUCH_FILE)
+        return node
+
     def count(self):
         """Вернуть (число директорий, число файлов) без корня."""
         dirs, files = 0, 0
@@ -58,6 +81,35 @@ class Vfs:
                 else:
                     files += 1
         return dirs, files
+
+
+def split_path(path, cwd):
+    """Преобразовать путь VFS в список компонентов от корня.
+
+    path - абсолютный (/a/b), относительный (a/b) или домашний
+    (~, ~/a) путь; cwd - компоненты текущей директории.
+    Компоненты "." пропускаются, ".." поднимается на уровень
+    выше (выше корня подняться нельзя). Домашняя директория -
+    корень VFS.
+    """
+    if path.startswith(SEPARATOR):
+        parts = []
+    elif path == HOME or path.startswith(HOME + SEPARATOR):
+        parts, path = [], path[len(HOME):]
+    else:
+        parts = list(cwd)
+    for part in path.split(SEPARATOR):
+        if part == "..":
+            if parts:
+                parts.pop()
+        elif part not in ("", "."):
+            parts.append(part)
+    return parts
+
+
+def format_path(parts):
+    """Получить строку абсолютного пути из списка компонентов."""
+    return SEPARATOR + SEPARATOR.join(parts)
 
 
 def load_vfs(path, name=DEFAULT_VFS_NAME):

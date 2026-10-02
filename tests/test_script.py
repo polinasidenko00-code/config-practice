@@ -39,7 +39,7 @@ class RunScriptTest(unittest.TestCase):
     def test_input_and_output_echoed(self):
         """Печатаются приглашение, команда и ее вывод."""
         _shell, out, _err = self.run_lines(["ls /home"])
-        self.assertEqual(out, "test:~$ ls /home\nls: args=['/home']\n")
+        self.assertEqual(out, "test:/$ ls /home\nls: args=['/home']\n")
 
     def test_errors_skipped(self):
         """Ошибочные строки пропускаются, выполнение продолжается."""
@@ -101,7 +101,7 @@ class MainTest(unittest.TestCase):
         self.assertEqual(code, 4)
         self.assertIn(f"vfs    = {vfs_path}", out)
         self.assertIn("VFS 'myfs' loaded into memory: 1 directories", out)
-        self.assertIn("myfs:~$ ls", out)
+        self.assertIn("myfs:/$ ls", out)
 
     def test_missing_script(self):
         """Отсутствующий скрипт - код возврата 1."""
