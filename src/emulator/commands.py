@@ -3,10 +3,14 @@
 Каждая команда - функция (shell, args), возвращающая вывод
 в виде строки. На текущем этапе ls и cd являются заглушками:
 они только выводят свое имя и полученные аргументы.
+Служебная команда vfs-save сохраняет VFS на диск.
 """
+
+from emulator.vfs import VfsError, save_vfs
 
 MAX_CD_ARGS = 1
 MAX_EXIT_ARGS = 1
+VFS_SAVE_ARGS = 1
 
 
 class CommandError(Exception):
@@ -57,8 +61,24 @@ def cmd_exit(_shell, args):
     raise ExitRequest(code)
 
 
+def cmd_vfs_save(shell, args):
+    """Сохранить текущее состояние VFS на диск по указанному пути.
+
+    Служебная команда: единственный аргумент - путь к новой или
+    пустой директории реальной ОС.
+    """
+    if len(args) != VFS_SAVE_ARGS:
+        raise CommandError("vfs-save: usage: vfs-save PATH")
+    try:
+        save_vfs(shell.vfs, args[0])
+    except VfsError as error:
+        raise CommandError(str(error)) from None
+    return f"vfs-save: VFS '{shell.vfs.name}' saved to '{args[0]}'"
+
+
 COMMANDS = {
     "ls": cmd_ls,
     "cd": cmd_cd,
     "exit": cmd_exit,
+    "vfs-save": cmd_vfs_save,
 }
