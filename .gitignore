@@ -10,6 +10,9 @@ venv/
 build/
 dist/
 
+# Копии VFS, сохраненные тестовыми скриптами
+out/
+
 # Редакторы и IDE
 .vscode/
 .idea/

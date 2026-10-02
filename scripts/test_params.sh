@@ -4,11 +4,11 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 EMU="$DIR/../src/main.py"
 
 echo "===== 1. Both parameters ====="
-python3 "$EMU" --vfs vfs/full --script "$DIR/start_basic.txt"
+python3 "$EMU" --vfs "$DIR/../vfs/deep" --script "$DIR/start_basic.txt"
 echo "exit code: $?"
 
 echo "===== 2. Both parameters in reverse order ====="
-python3 "$EMU" --script "$DIR/start_errors.txt" --vfs vfs/full
+python3 "$EMU" --script "$DIR/start_errors.txt" --vfs "$DIR/../vfs/deep"
 echo "exit code: $?"
 
 echo "===== 3. Help ====="

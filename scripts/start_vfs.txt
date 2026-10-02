@@ -1,0 +1,28 @@
+# Стартовый скрипт этапа 3: все реализованные команды,
+# работа с VFS и обработка ошибок.
+# Запускается из корня проекта: копии VFS сохраняются в out/.
+
+# Команды-заглушки ls и cd
+ls
+ls -l /home /etc
+cd
+cd /home/user
+
+# Ошибки команд
+cd /home /tmp
+unknown_command arg
+
+# Сохранение VFS на диск в исходном формате
+vfs-save out/vfs_copy
+
+# Ошибки vfs-save: нет пути, лишний аргумент,
+# непустая директория, файл вместо директории
+vfs-save
+vfs-save out/a out/b
+vfs-save out/vfs_copy
+vfs-save vfs/not_a_directory.txt
+
+# Ошибки exit и завершение работы
+exit abc
+exit 1 2
+exit
