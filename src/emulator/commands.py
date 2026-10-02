@@ -6,7 +6,7 @@ filecmds; служебная команда vfs-save сохраняет VFS на
 """
 
 from emulator.errors import CommandError, ExitRequest
-from emulator.filecmds import cmd_cd, cmd_ls
+from emulator.filecmds import cmd_cat, cmd_cd, cmd_ls, cmd_rev
 from emulator.vfs import VfsError, save_vfs
 
 __all__ = ["COMMANDS", "CommandError", "ExitRequest"]
@@ -80,6 +80,8 @@ def cmd_vfs_save(shell, args):
 COMMANDS = {
     "ls": cmd_ls,
     "cd": cmd_cd,
+    "cat": cmd_cat,
+    "rev": cmd_rev,
     "history": cmd_history,
     "exit": cmd_exit,
     "vfs-save": cmd_vfs_save,

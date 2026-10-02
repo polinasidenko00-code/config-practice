@@ -99,6 +99,48 @@ def cmd_ls(shell, args):
     return finish("ls", "\n\n".join(blocks).rstrip("\n"), errors)
 
 
+def read_texts(shell, name, paths, errors):
+    """Прочитать содержимое файлов VFS как текст UTF-8.
+
+    Для пустого списка путей выбрасывает CommandError (чтение
+    стандартного ввода не поддерживается). Ненайденные пути и
+    директории добавляются в errors.
+    """
+    if not paths:
+        raise CommandError(f"{name}: missing file operand")
+    texts = []
+    for path in paths:
+        try:
+            node = shell.find(path)
+        except VfsPathError as error:
+            errors.append(f"{path}: {error}")
+            continue
+        if isinstance(node, VfsDir):
+            errors.append(f"{path}: Is a directory")
+            continue
+        text = node.data.decode("utf-8", errors="replace")
+        texts.append(text.replace("\r\n", "\n"))
+    return texts
+
+
+def cmd_cat(shell, args):
+    """Вывести содержимое файлов, объединив их последовательно."""
+    errors = []
+    text = "".join(read_texts(shell, "cat", args, errors))
+    if text.endswith("\n"):
+        text = text[:-1]
+    return finish("cat", text, errors)
+
+
+def cmd_rev(shell, args):
+    """Вывести строки файлов, переставив символы в обратном порядке."""
+    errors = []
+    lines = []
+    for text in read_texts(shell, "rev", args, errors):
+        lines.extend(line[::-1] for line in text.splitlines())
+    return finish("rev", "\n".join(lines), errors)
+
+
 def cmd_cd(shell, args):
     """Сменить текущую директорию; без аргумента - в корень (~)."""
     if len(args) > MAX_CD_ARGS:
