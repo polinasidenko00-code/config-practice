@@ -14,6 +14,9 @@
 - **Этап 3. VFS** — виртуальная файловая система: директория на диске
   загружается в память, все операции выполняются только в памяти,
   команда `vfs-save` сохраняет VFS на диск в исходном формате.
+- **Этап 4. Основные команды** — настоящие `ls` и `cd` с текущей
+  директорией и путями (`.`, `..`, `~`), новые команды `history`,
+  `rev` и `cat`.
 
 Внешних зависимостей нет, требуется Python 3.8+.
 
@@ -25,7 +28,9 @@ src/
   emulator/
     config.py           параметры командной строки, создание VFS
     parser.py           парсер строки ввода
-    commands.py         команды эмулятора
+    errors.py           исключения команд
+    commands.py         реестр команд, history, exit, vfs-save
+    filecmds.py         команды ls, cd, cat, rev
     shell.py            состояние оболочки и выполнение команд
     repl.py             интерактивный цикл REPL
     script.py           выполнение стартового скрипта
@@ -46,7 +51,7 @@ python src/main.py [-h] [--vfs PATH] [--script PATH]
 
 | Параметр | Описание |
 |---|---|
-| `--vfs PATH` | Путь к директории — источнику VFS. Последний компонент пути становится именем VFS в приглашении (`--vfs vfs/deep` → `deep:~$`). Без параметра используется пустая VFS с именем `vfs` |
+| `--vfs PATH` | Путь к директории — источнику VFS. Последний компонент пути становится именем VFS в приглашении (`--vfs vfs/deep` → `deep:/$`). Без параметра используется пустая VFS с именем `vfs` |
 | `--script PATH` | Путь к стартовому скрипту, который выполняется перед интерактивным режимом |
 | `-h`, `--help` | Справка по параметрам |
 
@@ -120,28 +125,52 @@ python src/main.py [-h] [--vfs PATH] [--script PATH]
 
 | Скрипт | Назначение |
 |---|---|
-| `scripts/start_basic.txt` | Все команды этапа 1 без ошибок |
+| `scripts/start_basic.txt` | Команды `ls` и `cd` без ошибок (для `vfs/deep`) |
 | `scripts/start_errors.txt` | Ошибочные строки и `exit` с кодом 3 |
 | `scripts/start_interactive.txt` | Скрипт без `exit`, затем интерактивный режим |
 | `scripts/start_vfs.txt` | Все команды этапов 1–3, работа с VFS и ошибки; копию VFS сохраняет в `out/vfs_copy` (запускать из корня проекта) |
+| `scripts/start_commands.txt` | Команды этапа 4 (`ls`, `cd`, `history`, `rev`, `cat`) во всех режимах и с ошибками (для `vfs/deep`) |
 
 ## Команды
 
+Пути в командах — пути внутри VFS: абсолютные (`/home/user`),
+относительные от текущей директории (`docs/report.txt`), с `.` и `..`,
+а также `~` — домашняя директория, которой является корень VFS.
+Текущая директория отображается в приглашении: `deep:/home/user$`.
+
 | Команда | Поведение |
 |---|---|
-| `ls [арг...]` | Заглушка: выводит имя и аргументы |
-| `cd [путь]` | Заглушка: выводит имя и аргумент; более одного аргумента — ошибка |
+| `ls [-a] [-l] [PATH...]` | Без путей — содержимое текущей директории. Для директории выводит содержимое по алфавиту, для файла — его путь. `-a` показывает скрытые файлы (имя начинается с `.`), `-l` — длинный формат: тип (`d`/`-`), размер в байтах, имя. Опции объединяются (`-al`). Для нескольких путей содержимое выводится блоками с заголовком `PATH:` |
+| `cd [PATH]` | Переходит в директорию; без аргумента — в корень (`~`) |
+| `cat FILE...` | Выводит содержимое файлов, объединяя их по порядку |
+| `rev FILE...` | Выводит строки файлов с символами в обратном порядке |
+| `history [N]` | Выводит пронумерованную историю всех введенных команд (включая ошибочные и сам `history`); с `N` — только `N` последних |
 | `vfs-save PATH` | Сохраняет VFS на диск (см. выше) |
 | `exit [код]` | Завершает работу с кодом возврата (по умолчанию 0) |
 
+Содержимое файлов для `cat` и `rev` читается как UTF-8 (некорректные
+байты заменяются символом `�`), окончания строк Windows приводятся
+к `
+`. Чтение стандартного ввода не поддерживается, поэтому `cat`
+и `rev` требуют хотя бы один файл.
+
 ### Обработка ошибок команд
+
+Если команда получила несколько путей и часть из них ошибочна, для
+корректных путей вывод печатается, а для ошибочных — сообщения
+об ошибках.
 
 | Ситуация | Сообщение |
 |---|---|
 | Неизвестная команда | `foo: command not found` |
-| Лишние аргументы `cd` | `cd: too many arguments` |
-| Лишние аргументы `exit` | `exit: too many arguments` |
-| Нечисловой код `exit` | `exit: abc: numeric argument required` |
+| Путь не найден | `ls: cannot access 'x': No such file or directory`, `cd: x: No such file or directory`, `cat: x: No such file or directory` |
+| Файл вместо директории | `cd: a.txt: Not a directory` |
+| Директория вместо файла | `cat: docs: Is a directory`, `rev: docs: Is a directory` |
+| Неизвестная опция `ls` | `ls: invalid option -- 'z'` |
+| `cat`/`rev` без файлов | `cat: missing file operand` |
+| Лишние аргументы `cd`, `history`, `exit` | `cd: too many arguments` |
+| Нечисловой аргумент `history`, `exit` | `history: abc: numeric argument required` |
+| Отрицательный аргумент `history` | `history: -3: invalid option` |
 | Скрипт не найден | `emulator: cannot read script '...': No such file or directory` |
 
 Ошибки команд выводятся в stderr и не прерывают работу эмулятора.
@@ -152,9 +181,10 @@ python src/main.py [-h] [--vfs PATH] [--script PATH]
 
 | Элемент | Описание |
 |---|---|
-| Приглашение | `<имя VFS>:~$ ` |
+| Приглашение | `<имя VFS>:<текущая директория>$ ` |
 | `parse(line)` | Делит ввод на команду и аргументы по пробелам |
-| `Shell.execute(line)` | Выполняет строку, возвращает вывод команды |
+| `Shell.execute(line)` | Выполняет строку, добавляет ее в историю, возвращает вывод команды |
+| `Shell.resolve(path)`, `Shell.find(path)` | Разбирают путь относительно текущей директории и находят узел VFS |
 | `execute_line(...)` | Выполняет строку и печатает вывод или ошибку |
 | `run_repl(shell)` | Цикл «чтение — выполнение — вывод» до `exit`/EOF |
 | `parse_args(argv)` | Разбирает параметры командной строки |
@@ -166,7 +196,10 @@ python src/main.py [-h] [--vfs PATH] [--script PATH]
 | `run_script(...)` | Выполняет команды стартового скрипта |
 | `load_vfs(path, name)` | Загружает директорию в память |
 | `save_vfs(vfs, path)` | Сохраняет VFS из памяти на диск |
-| `Vfs`, `VfsDir`, `VfsFile` | Узлы VFS в памяти; `Vfs.count()` — число директорий и файлов |
+| `Vfs`, `VfsDir`, `VfsFile` | Узлы VFS в памяти; `Vfs.count()` — число директорий и файлов, `Vfs.get(parts)` — поиск узла |
+| `split_path(path, cwd)`, `format_path(parts)` | Разбор пути VFS в список компонентов и обратно |
+| `cmd_ls`, `cmd_cd`, `cmd_cat`, `cmd_rev`, `cmd_history` | Команды этапа 4 |
+| `CommandError(message, output)` | Ошибка команды с частичным выводом |
 
 ## Сборка и запуск тестов
 
@@ -204,12 +237,13 @@ Linux / macOS:
 | `scripts/test_vfs_files` | VFS из нескольких файлов |
 | `scripts/test_vfs_deep` | VFS с 3+ уровнями файлов и папок, путь с завершающим разделителем |
 | `scripts/test_vfs_errors` | Несуществующий путь, файл вместо директории, символическая ссылка внутри VFS |
+| `scripts/test_commands` | Все режимы `ls`, `cd`, `history`, `rev`, `cat` и их ошибки на `vfs/deep` |
 | `scripts/test_script` | Скрипт со всеми командами, скрипт с ошибками и кодом возврата, переход в интерактивный режим, отсутствующий скрипт |
 | `scripts/test_params` | Оба параметра в любом порядке, `--help`, неизвестный параметр, параметр без значения |
 
 ## Примеры использования
 
-Работа с VFS в интерактивном режиме:
+Команды этапа 4 (фрагмент `scripts/start_commands.txt`):
 
 ```
 > python src/main.py --vfs vfs/deep
@@ -217,15 +251,45 @@ Linux / macOS:
 [debug]   vfs    = vfs/deep
 [debug]   script = None
 [debug] VFS 'deep' loaded into memory: 13 directories, 10 files
-deep:~$ vfs-save out/deep_copy
+deep:/$ ls
+etc  home  readme.txt  tmp  var
+deep:/$ ls -al /home/user
+-       26 .profile
+d        - docs
+d        - music
+deep:/$ ls /nope /etc
+/etc:
+app  hosts
+ls: cannot access '/nope': No such file or directory
+deep:/$ cd /home/user/docs
+deep:/home/user/docs$ cat report.txt drafts/draft1.txt
+Annual report
+=============
+Everything is fine.
+First draft of the report.
+deep:/home/user/docs$ rev drafts/draft1.txt
+.troper eht fo tfard tsriF
+deep:/home/user/docs$ cat drafts
+cat: drafts: Is a directory
+deep:/home/user/docs$ cd ../..
+deep:/home$ cd /readme.txt
+cd: /readme.txt: Not a directory
+deep:/home$ history 3
+    8  cd ../..
+    9  cd /readme.txt
+   10  history 3
+deep:/home$ exit
+```
+
+Сохранение VFS:
+
+```
+deep:/$ vfs-save out/deep_copy
 vfs-save: VFS 'deep' saved to 'out/deep_copy'
-deep:~$ vfs-save out/deep_copy
+deep:/$ vfs-save out/deep_copy
 vfs-save: 'out/deep_copy': directory is not empty
-deep:~$ vfs-save
+deep:/$ vfs-save
 vfs-save: usage: vfs-save PATH
-deep:~$ foo
-foo: command not found
-deep:~$ exit
 ```
 
 Ошибка загрузки VFS:
@@ -239,30 +303,3 @@ emulator: cannot load VFS 'vfs/not_a_directory.txt': invalid format, not a direc
 ```
 
 Код возврата — 1.
-
-Стартовый скрипт с ошибками (`scripts/start_errors.txt`):
-
-```
-> python src/main.py --script scripts/start_errors.txt
-[debug] emulator parameters:
-[debug]   vfs    = None
-[debug]   script = scripts/start_errors.txt
-[debug] VFS 'vfs' loaded into memory: 0 directories, 0 files
-vfs:~$ ls /home
-ls: args=['/home']
-vfs:~$ unknown_command arg
-unknown_command: command not found
-vfs:~$ cd /tmp /var
-cd: too many arguments
-vfs:~$ pwd
-pwd: command not found
-vfs:~$ ls after errors
-ls: args=['after', 'errors']
-vfs:~$ exit abc
-exit: abc: numeric argument required
-vfs:~$ exit 1 2
-exit: too many arguments
-vfs:~$ exit 3
-```
-
-Код возврата — 3; строка после `exit 3` не выполняется.
