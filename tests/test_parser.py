@@ -1,14 +1,8 @@
 """Тесты парсера строки ввода."""
 
-import os
-import sys
 import unittest
 
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), os.pardir, "src")
-)
-
-from emulator.parser import parse  # noqa: E402
+from emulator.parser import parse
 
 
 class ParseTest(unittest.TestCase):

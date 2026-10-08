@@ -1,17 +1,13 @@
 """Тесты команд этапа 5: chown и rm."""
 
 import os
-import sys
 import tempfile
 import unittest
+from functools import cached_property
 
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), os.pardir, "src")
-)
-
-from emulator.commands import CommandError  # noqa: E402
-from emulator.shell import Shell  # noqa: E402
-from emulator.vfs import Vfs, VfsDir, VfsFile, load_vfs  # noqa: E402
+from emulator.commands import CommandError
+from emulator.shell import Shell
+from emulator.vfs import Vfs, VfsDir, VfsFile, load_vfs
 
 
 def make_shell():
@@ -36,9 +32,10 @@ def owner_of(shell, path):
 class ChownTest(unittest.TestCase):
     """Проверка команды chown."""
 
-    def setUp(self):
-        """Создать оболочку с тестовой VFS."""
-        self.shell = make_shell()
+    @cached_property
+    def shell(self):
+        """Оболочка с тестовой VFS, своя для каждого теста."""
+        return make_shell()
 
     def test_default_owner(self):
         """По умолчанию владелец и группа - root."""
@@ -107,9 +104,10 @@ class ChownTest(unittest.TestCase):
 class RmTest(unittest.TestCase):
     """Проверка команды rm."""
 
-    def setUp(self):
-        """Создать оболочку с тестовой VFS."""
-        self.shell = make_shell()
+    @cached_property
+    def shell(self):
+        """Оболочка с тестовой VFS, своя для каждого теста."""
+        return make_shell()
 
     def test_remove_file(self):
         """rm удаляет файл из VFS."""

@@ -1,19 +1,15 @@
 """Тесты загрузки и сохранения VFS."""
 
 import os
-import sys
 import tempfile
 import unittest
+from functools import cached_property
 from unittest import mock
 
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), os.pardir, "src")
-)
-
-from emulator.commands import CommandError  # noqa: E402
-from emulator.config import create_vfs, parse_args  # noqa: E402
-from emulator.shell import Shell  # noqa: E402
-from emulator.vfs import (  # noqa: E402
+from emulator.commands import CommandError
+from emulator.config import create_vfs, parse_args
+from emulator.shell import Shell
+from emulator.vfs import (
     Vfs,
     VfsDir,
     VfsError,
@@ -53,13 +49,19 @@ def read_tree(root):
 class VfsTestCase(unittest.TestCase):
     """Базовый класс: временная директория с деревом файлов."""
 
-    def setUp(self):
-        """Создать временную директорию с исходной VFS."""
+    @cached_property
+    def tmp(self):
+        """Временная директория, удаляемая после теста."""
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
-        self.tmp = temp.name
-        self.source = os.path.join(self.tmp, "source")
-        make_tree(self.source, TREE)
+        return temp.name
+
+    @cached_property
+    def source(self):
+        """Директория с исходной VFS внутри временной директории."""
+        source = os.path.join(self.tmp, "source")
+        make_tree(source, TREE)
+        return source
 
 
 class LoadVfsTest(VfsTestCase):
@@ -155,10 +157,10 @@ class SaveVfsTest(VfsTestCase):
 class VfsSaveCommandTest(VfsTestCase):
     """Проверка команды vfs-save."""
 
-    def setUp(self):
-        """Создать оболочку с загруженной VFS."""
-        super().setUp()
-        self.shell = Shell(load_vfs(self.source, "src"))
+    @cached_property
+    def shell(self):
+        """Оболочка с VFS, загруженной из исходной директории."""
+        return Shell(load_vfs(self.source, "src"))
 
     def test_save(self):
         """vfs-save PATH сохраняет VFS и сообщает об этом."""

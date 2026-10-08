@@ -2,15 +2,9 @@
 
 import contextlib
 import io
-import os
-import sys
 import unittest
 
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), os.pardir, "src")
-)
-
-from emulator.config import (  # noqa: E402
+from emulator.config import (
     format_config,
     parse_args,
     vfs_name_from_path,

@@ -244,7 +244,8 @@ Linux / macOS:
 ```
 
 Либо напрямую: `python src/main.py ...` и
-`python -m unittest discover -s tests -v`.
+`python -m unittest discover -s tests -t .`
+(из корня проекта).
 
 ### Скрипты ОС для проверки
 

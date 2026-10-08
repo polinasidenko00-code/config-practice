@@ -1,16 +1,11 @@
 """Тесты команд этапа 4: ls, cd, cat, rev, history."""
 
-import os
-import sys
 import unittest
+from functools import cached_property
 
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), os.pardir, "src")
-)
-
-from emulator.commands import CommandError  # noqa: E402
-from emulator.shell import Shell  # noqa: E402
-from emulator.vfs import (  # noqa: E402
+from emulator.commands import CommandError
+from emulator.shell import Shell
+from emulator.vfs import (
     Vfs,
     VfsDir,
     VfsFile,
@@ -71,9 +66,10 @@ class PathTest(unittest.TestCase):
 class LsTest(unittest.TestCase):
     """Проверка команды ls."""
 
-    def setUp(self):
-        """Создать оболочку с тестовой VFS."""
-        self.shell = make_shell()
+    @cached_property
+    def shell(self):
+        """Оболочка с тестовой VFS, своя для каждого теста."""
+        return make_shell()
 
     def test_current_directory(self):
         """Без аргументов - текущая директория, скрытые не видны."""
@@ -118,9 +114,10 @@ class LsTest(unittest.TestCase):
 class CdTest(unittest.TestCase):
     """Проверка команды cd."""
 
-    def setUp(self):
-        """Создать оболочку с тестовой VFS."""
-        self.shell = make_shell()
+    @cached_property
+    def shell(self):
+        """Оболочка с тестовой VFS, своя для каждого теста."""
+        return make_shell()
 
     def test_relative_and_parent(self):
         """Переход по относительному пути и на уровень выше."""
@@ -158,9 +155,10 @@ class CdTest(unittest.TestCase):
 class CatRevTest(unittest.TestCase):
     """Проверка команд cat и rev."""
 
-    def setUp(self):
-        """Создать оболочку с тестовой VFS."""
-        self.shell = make_shell()
+    @cached_property
+    def shell(self):
+        """Оболочка с тестовой VFS, своя для каждого теста."""
+        return make_shell()
 
     def test_cat(self):
         """cat выводит содержимое без завершающего перевода строки."""
@@ -203,14 +201,16 @@ class CatRevTest(unittest.TestCase):
 class HistoryTest(unittest.TestCase):
     """Проверка команды history."""
 
-    def setUp(self):
-        """Создать оболочку и выполнить несколько команд."""
-        self.shell = make_shell()
+    @cached_property
+    def shell(self):
+        """Оболочка, в которой уже выполнено несколько команд."""
+        shell = make_shell()
         for line in ("ls", "cd home", "foo"):
             try:
-                self.shell.execute(line)
+                shell.execute(line)
             except CommandError:
                 pass
+        return shell
 
     def test_full_history(self):
         """Выводятся все команды с номерами, включая history."""

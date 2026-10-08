@@ -1,18 +1,13 @@
 """Тесты команд, оболочки и REPL."""
 
 import io
-import os
-import sys
 import unittest
+from functools import cached_property
 
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), os.pardir, "src")
-)
-
-from emulator.commands import CommandError  # noqa: E402
-from emulator.repl import run_repl  # noqa: E402
-from emulator.shell import Shell  # noqa: E402
-from emulator.vfs import Vfs, VfsDir  # noqa: E402
+from emulator.commands import CommandError
+from emulator.repl import run_repl
+from emulator.shell import Shell
+from emulator.vfs import Vfs, VfsDir
 
 
 def fake_input(lines):
@@ -32,11 +27,12 @@ def fake_input(lines):
 class ShellTest(unittest.TestCase):
     """Проверка выполнения команд оболочкой."""
 
-    def setUp(self):
-        """Создать новую оболочку для каждого теста."""
+    @cached_property
+    def shell(self):
+        """Оболочка с VFS "myvfs", своя для каждого теста."""
         vfs = Vfs("myvfs")
         vfs.root.add(VfsDir("tmp"))
-        self.shell = Shell(vfs)
+        return Shell(vfs)
 
     def test_prompt_contains_vfs_name(self):
         """Приглашение содержит имя VFS."""

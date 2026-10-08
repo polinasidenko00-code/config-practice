@@ -3,17 +3,13 @@
 import contextlib
 import io
 import os
-import sys
 import tempfile
 import unittest
 
-SRC_DIR = os.path.join(os.path.dirname(__file__), os.pardir, "src")
-sys.path.insert(0, SRC_DIR)
-
-from emulator.script import ScriptError, read_script, run_script  # noqa
-from emulator.shell import Shell  # noqa: E402
-from emulator.vfs import Vfs, VfsDir, VfsFile  # noqa: E402
-from main import main  # noqa: E402
+from emulator.script import ScriptError, read_script, run_script
+from emulator.shell import Shell
+from emulator.vfs import Vfs, VfsDir, VfsFile
+from main import main
 
 
 def write_temp_script(text):
